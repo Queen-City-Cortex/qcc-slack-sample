@@ -1,0 +1,11 @@
+node_modules/
+dist/
+*.tsbuildinfo
+coverage/
+
+# Secrets: never commit tokens or live-smoke output
+.env
+.env.*
+!.env.example
+*.token
+live-smoke-output/
