@@ -10,8 +10,9 @@ A small, read-only TypeScript connector for Slack's
 It is a clean-room sample built from Slack's public documentation. The design was recorded first in
 [`docs/2026-09-28-clean-room-design.md`](docs/2026-09-28-clean-room-design.md).
 
-> **Status:** only synthetic tests have been run against it. It has not been verified against a live Slack
-> workspace. See [Limitations](#limitations).
+> **Status:** synthetic tests plus a bounded, consented live smoke check in one workspace. Admin-user
+> `has_2fa` field visibility was observed; some records omitted the field and remain unknown.
+> See the [live verification note](docs/live-verification.md) and [Limitations](#limitations).
 
 ## What it does not do
 
@@ -29,7 +30,8 @@ It is a clean-room sample built from Slack's public documentation. The design wa
 - A Slack token with the **`users:read`** scope.
   - Slack documents `has_2fa` as visible **only when an admin runs the call**. With a non-admin token, the
     field is expected to be absent, and the result reports `twoFactorFieldVisibility: "visibility_unverified"`.
-    Admin visibility has **not** been confirmed here, because no consented live smoke test has been run.
+    A consented admin-user smoke check observed this field in one workspace; this does not establish
+    availability for every member, workspace, or token. Slack may also include the implicit `identify` scope.
 - A single-workspace (non-Enterprise-Grid-org) token. Any member whose `team_id` differs from the configured
   `workspaceId` makes the run fail as `workspace_mismatch`.
 
@@ -72,8 +74,8 @@ For an optional live smoke test, **get written consent from the workspace owner 
    token in your shell session or a local secret manager. **Do not** write it to a file in this repository, even
    though `.env*` and `*.token` are gitignored.
 2. Run a scratch script outside the repository with the token injected by a secret manager or secure local environment, and print only aggregate counts. Do not place the token on a command line or print observations.
-3. Do not commit, paste, or share the output. Do not turn it into a test fixture. The fixtures here are synthetic
-   on purpose.
+3. Do not commit, paste, or share raw output, tokens, or member identifiers. Retain only a reviewed aggregate
+   verification note. The fixtures here remain synthetic; a live smoke check is not a recorded response fixture.
 4. Revoke the token when you are done.
 
 ## Output contract
@@ -128,9 +130,9 @@ anything tries to reach the network.
 
 ## Limitations
 
-- **Admin visibility of `has_2fa` is unverified.** This follows Slack's documentation, but no consented live
-  smoke test has confirmed it. Until one does, `visibility_unverified` or `unknown` must not be read as "2FA
-  disabled."
+- **Live coverage is narrow.** One consented workspace returned a boolean `has_2fa` on a member and
+  omitted it on other entries. The smoke check covered one terminal page, not live multi-page pagination
+  or rate limiting. `visibility_unverified` or `unknown` must never be read as "2FA disabled."
 - **Slack-native 2FA ≠ SSO MFA.** A `disabled` value is not evidence of missing MFA if the workspace uses SSO.
 - **Enterprise Grid org-level tokens are unsupported.** Members from other workspaces fail the run as
   `workspace_mismatch`.
