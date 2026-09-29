@@ -1,4 +1,4 @@
-# Bounded live verification
+# Live check: scope and remaining questions
 
 **Observed:** 2026-09-29T00:19:05.565Z (September 28 in US Eastern time).
 **Connector revision:** `22c1a5a85dcbcd56331976d9676261fcef57ae32`.
@@ -7,9 +7,10 @@
 ## Result
 
 - Slack `auth.test` authenticated a user token and matched the intended workspace.
-- Granted scopes were `users:read` and `identify`. Slack [documents `identify`](https://docs.slack.dev/reference/scopes/identify/) as an implicit/background identity scope on user tokens. The operator harness initially stopped on that additional scope; documentation review explained it, and the harness was corrected before collecting members. No additional scopes were granted or requested.
+- Granted scopes were `users:read` and `identify`. Slack [documents `identify`](https://docs.slack.dev/reference/scopes/identify/) as an implicit/background identity scope on user tokens.
 - The actual `collectUsers` connector and `createFetchTransport` completed a one-page `users.list` scan with normal pagination termination. No duplicate observations or workspace mismatches were encountered.
 - The authenticated caller's returned member record identified it as an admin/owner. A boolean `has_2fa` field was visible in the returned member set. Other entries omitted it; those correctly remained `unknown`, not `disabled`.
+- The retained aggregate evidence does not establish whether that boolean belonged to the caller or another human. It also does not classify the entries that omitted the field. This check therefore does not demonstrate visibility of other humans' 2FA settings.
 - Only aggregate counts, booleans and safe status codes were retained. No token, raw API response, real member/workspace identifiers, names, emails or profile data were saved in this repository or its verification note.
 
 ## Scope of the check
@@ -23,4 +24,3 @@ These wrapper protections are not new guarantees of the package's default transp
 - No live multi-page pagination, rate-limit response, non-admin comparison, Enterprise Grid behavior, or cross-workspace generality was tested. Existing deterministic tests cover synthetic pagination and error handling.
 - Field presence does not prove every member's 2FA state is observable. It does not establish SSO-provider MFA or overall compliance.
 - No live response fixture was recorded. Checked-in tests remain synthetic, not recorded mocks.
-- This note is not approval to publish the repository, deploy it, or use the token for any other purpose.
