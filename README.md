@@ -1,18 +1,37 @@
-# slack-users-2fa-sample
+# Slack integration sample
 
-A small, read-only TypeScript connector for Slack's
-[`users.list`](https://docs.slack.dev/reference/methods/users.list) Web API method. For one workspace, it reports:
+Slack's `has_2fa` field reports Slack-native 2FA, not MFA enforced by an identity provider.
+Treating a missing value as `false` could create a false finding. Stopping at a short page could miss users.
 
-- the opaque Slack user ID and team ID,
-- a **Slack-native** 2FA observation, and
-- a conservative account-state classification.
+This read-only TypeScript sample shows how Queen City Cortex handles those cases in a
+[`users.list`](https://docs.slack.dev/reference/methods/users.list) connector PR: code, tests and a vendor-behavior note.
+It was built independently from public documentation, with a [design recorded before code](docs/2026-09-28-clean-room-design.md).
 
-It is a clean-room sample built from Slack's public documentation. The design was recorded first in
-[`docs/2026-09-28-clean-room-design.md`](docs/2026-09-28-clean-room-design.md).
+## Vendor behavior and delivery choices
 
-> **Status:** synthetic tests plus a bounded, consented live smoke check in one workspace. Admin-user
-> `has_2fa` field visibility was observed; some records omitted the field and remain unknown.
-> See the [live verification note](docs/live-verification.md) and [Limitations](#limitations).
+| Vendor behavior | Why it matters | Choice in this sample |
+| --- | --- | --- |
+| `has_2fa` may be absent; Slack documents visibility for admin callers. Installing an app as an admin does not make every token an admin-user token. | An unreadable field is not evidence that a person has disabled 2FA. | Missing or null becomes `unknown`; a malformed value fails the scan. |
+| Slack-native 2FA and identity-provider MFA are separate. | `has_2fa: false` alone cannot establish that a person lacks MFA. | Report the Slack observation without assigning an overall compliance verdict. |
+| A short page can still have a next cursor. | Page length is not a reliable completion signal. | Follow cursors; reject malformed metadata, repeated cursors and page-cap exhaustion. |
+| Later pages can fail or conflict with earlier observations. | Partial results must not look like a complete workspace scan. | Return `incomplete` without partial observations. |
+
+Sources: [Slack user object](https://docs.slack.dev/reference/objects/user-object/),
+[`users.list`](https://docs.slack.dev/reference/methods/users.list/),
+[rate limits](https://docs.slack.dev/apis/web-api/rate-limits/).
+
+**What to tell the requester:** "We completed the scan" and "we know every person's MFA status" are different claims.
+A complete result means cursor pagination ended normally; missing fields remain unknown.
+
+## Evidence
+
+Synthetic tests cover pagination, malformed responses, rate limiting and error redaction.
+A consented admin-user live check completed one terminal page and observed a boolean `has_2fa` alongside omitted fields.
+The retained evidence does **not** establish whether that boolean belonged to the caller or another human,
+or why the other entries omitted it. Fixtures remain synthetic, not recorded Slack responses.
+See the [live-check record](docs/live-verification.md) for the exact revision and remaining gaps.
+
+This is a small code-review sample, not evidence of deployment in a customer's existing integration framework.
 
 ## What it does not do
 
@@ -23,6 +42,15 @@ It is a clean-room sample built from Slack's public documentation. The design wa
   authentication only. A user who signs in through SSO with strong MFA can still show `has_2fa: false`. This
   connector cannot show that an organization meets any MFA policy or compliance requirement.
 - It does not work out whether an account is active, invited, or pending.
+
+## Before adapting this to your codebase
+
+- Use your transport’s request deadlines, cancellation and response-size limits; the default transport here has no explicit request deadline or body-size cap.
+- Fit retries and checkpoint/resume behavior to your job runner. This sample allows one optional rate-limit retry and otherwise starts over.
+- Map `(teamId, userId)` through your approved identity model before drawing cross-system access conclusions.
+- Validate the token/workspace model for Enterprise Grid and define the account states your controls actually need.
+
+These are integration decisions, not features implemented by this sample.
 
 ## Requirements
 
@@ -142,7 +170,7 @@ anything tries to reach the network.
   `workspace_mismatch`.
 - **Only one rate-limit retry per run.** Large workspaces may need the caller to re-run later.
 - **No partial results.** This is deliberate, but it means one bad page discards the whole run.
-- **Response body size is not capped** by `createFetchTransport`. Wrap your own transport if you need a limit.
+- **No explicit request deadline or response-body cap** in `createFetchTransport`. Supply these through a custom transport; page and retry counts do not impose a wall-clock deadline.
 - **`accountState` is minimal:** guests (`is_restricted`), invitation state, and last activity are not
   reported.
 
