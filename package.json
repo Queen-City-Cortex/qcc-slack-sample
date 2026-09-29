@@ -3,7 +3,11 @@
   "version": "0.1.0",
   "description": "Clean-room, read-only Slack users.list connector that reports Slack-native 2FA observations by opaque ID.",
   "private": true,
-  "license": "UNLICENSED",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Queen-City-Cortex/qcc-slack-sample.git"
+  },
   "type": "module",
   "engines": {
     "node": ">=24"

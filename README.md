@@ -37,8 +37,12 @@ It is a clean-room sample built from Slack's public documentation. The design wa
 
 ## Install and test
 
+This is a source-repository sample, not a published npm package. Clone it to run the checks:
+
 ```sh
-npm install         # dev-only: typescript, @types/node
+git clone https://github.com/Queen-City-Cortex/qcc-slack-sample.git
+cd qcc-slack-sample
+npm ci --ignore-scripts  # dev-only: typescript, @types/node
 npm test            # node --test, synthetic fixtures, no network
 npm run typecheck   # tsc --noEmit (strict)
 npm run build       # emits dist/ (gitignored)
@@ -141,3 +145,7 @@ anything tries to reach the network.
 - **Response body size is not capped** by `createFetchTransport`. Wrap your own transport if you need a limit.
 - **`accountState` is minimal:** guests (`is_restricted`), invitation state, and last activity are not
   reported.
+
+## License
+
+[MIT](LICENSE) — Copyright (c) 2026 Queen City Cortex LLC. This license applies to this sample repository only.
